@@ -364,10 +364,14 @@ into BOOT; `esslog=1` keeps the kernel's log in `exynos_ss`). `core0=0` keeps th
 want the log of. `-v` shows the kernel's log on the screen while it starts.
 
 What to look for, in this order:
-1. HakiOS's logo (the UEFI started).
-2. The loader's banner, with `platform starlte, GICv2` and `CurrentEL=1` (Carbon has EL2).
+1. Scion's logo (the UEFI started).
+2. The loader's banner (SCION, `hello scion-kernel!`), with `platform starlte, GICv2` and `CurrentEL=1` (Carbon has EL2).
 3. The kernel's log, `gic: v2 ... cpu 0 is interface 2` (the kernel starts on core 2), `6 of 6 processors are running`.
 4. launchd.
+
+With `splash=1` among the arguments (kernel `docs/boot-screen.md`; not a default, not yet seen on a phone) the screen shows the
+Scion sprout with a thin progress line and the kernel's last few lines in dim text instead of 2 and 3. `-v`, or Volume Down held while
+the phone starts, gives the full log on the screen as above.
 
 Photograph the screen as well. The loader's `logdump` is a Qualcomm partition, and this phone has none. Instead, the
 loader keeps the log in Samsung's pstore RAM (0xFED14000, 16 KB: the head of the loader's log and the tail of the kernel's),
