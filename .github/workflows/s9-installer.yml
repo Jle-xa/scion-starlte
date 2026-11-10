@@ -47,12 +47,18 @@ env:
   IPSW_DEVICE: iPhone10,3
   IPSW_BUILD: 20F66
   IPSW_SIZE: "6165698198"
+  ZIPNAME: scion-exynos9810-installer-format-userdata.zip
 
 jobs:
   installer:
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
+      - name: hfsprogs is installed (the persist build formats USERDATA)
+        run: |
+          command -v mkfs.hfsplus || { echo "::error::no mkfs.hfsplus"; exit 1; }
+          mkfs.hfsplus -V | head -1
+
       - name: The passphrase is set
         env:
           PASS: ${{ secrets.INSTALLER_PASSPHRASE }}
@@ -70,7 +76,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends build-essential git curl zstd clang lld \
             python3 python3-venv perl xz-utils flex bison m4 autoconf automake libtool-bin uuid-dev llvm \
-            meson ninja-build pkg-config
+            meson ninja-build pkg-config hfsprogs
           curl -L --fail --retry 3 -s "$SEVENZIP_URL" | tar -xJ -C "$W/bin" 7zz
           ln -sf 7zz "$W/bin/7z"
           "$W/bin/7z" i | sed -n 2p
@@ -204,7 +210,7 @@ jobs:
           mkdir -p "$W/out"
           SCION_KERNEL="$W/k" "$W/pkg/universal/mkinstaller.sh" -K "$W/k" -s "$W/k/userland/system.apfs" \
             -k starlte="$W/kernels/kernel-starlte" -k star2lte="$W/kernels/kernel-star2lte" -k crownlte="$W/kernels/kernel-crownlte" \
-            -r "$W/k/userland/root.apfs" -p "$PARTITION" -a "starlte=shub=6 bt=7 $BOOT_ARGS" -o "$W/out/scion-exynos9810-installer.zip"
+            -r "$W/k/userland/root.apfs" -p "$PARTITION" -U -u starlte=13917184 -a "starlte=shub=6 bt=7 $BOOT_ARGS" -o "$W/out/$ZIPNAME"
 
       - name: Encrypt it (the installer inside, untouched), and check the archive
         env:
@@ -213,26 +219,26 @@ jobs:
           TIME_LIMIT: ${{ inputs.time_limit }}
         run: |
           P="$W/pack" && mkdir -p "$P"
-          mv "$W/out/scion-exynos9810-installer.zip" "$P/"
-          (cd "$P" && sha256sum scion-exynos9810-installer.zip > SHA256SUMS)
+          mv "$W/out/$ZIPNAME" "$P/"
+          (cd "$P" && sha256sum "$ZIPNAME" > SHA256SUMS)
           cat > "$P/README.txt" <<EOF
           Scion for the Galaxy S9 (SM-G960F), built $(date -u +%Y-%m-%d) by $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           kernel repo $(git -C "$W/k" rev-parse --short HEAD), device repo ${GITHUB_SHA::7}, system image to $PARTITION
 
-          1. Check the zip: sha256sum -c SHA256SUMS   (or compare with: shasum -a 256 scion-exynos9810-installer.zip)
+          1. Check the zip: sha256sum -c SHA256SUMS   (or compare with: shasum -a 256 "$ZIPNAME")
           2. In TWRP, back up Boot, $PARTITION and EFS first and copy the backup off the phone.
-          3. Copy scion-exynos9810-installer.zip to the phone (adb push or microSD: adb sideload cannot take a zip over 2 GB) and flash it: Install > the zip > swipe.
+          3. Copy "$ZIPNAME" to the phone (adb push or microSD: adb sideload cannot take a zip over 2 GB) and flash it: Install > the zip > swipe.
              Flash this zip as it is: do not unpack it.
           4. Reboot > System. To leave Scion: five fingers held on the screen for 1.5 s (back to TWRP), or Vol Down + Power.
           $([ "$TIME_LIMIT" = 0 ] || echo "   A test run: after $TIME_LIMIT s it restarts into TWRP by itself. Pull the log then (/sys/fs/pstore/pmsg-ramoops-0).")
           Android back: restore the Boot and $PARTITION backups in TWRP.
           EOF
           A="$W/upload/scion-exynos9810-installer.7z" && mkdir -p "$W/upload"
-          (cd "$P" && 7z a -t7z -mx=0 -mhe=on -p"$PASS" "$A" scion-exynos9810-installer.zip SHA256SUMS README.txt > /dev/null)
+          (cd "$P" && 7z a -t7z -mx=0 -mhe=on -p"$PASS" "$A" "$ZIPNAME" SHA256SUMS README.txt > /dev/null)
           # the archive opens with the passphrase, and the zip inside is the one made above
           7z t -p"$PASS" "$A" > /dev/null
           want=$(cut -d' ' -f1 "$P/SHA256SUMS")
-          got=$(7z x -so -p"$PASS" "$A" scion-exynos9810-installer.zip | sha256sum | cut -d' ' -f1)
+          got=$(7z x -so -p"$PASS" "$A" "$ZIPNAME" | sha256sum | cut -d' ' -f1)
           [ "$got" = "$want" ] || { echo "::error::the zip inside the archive is not the installer"; exit 1; }
           rm -rf "$P"
           ls -la "$A"
