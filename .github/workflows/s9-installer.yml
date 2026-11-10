@@ -208,7 +208,7 @@ jobs:
           mkdir -p "$W/out"
           SCION_KERNEL="$W/k" "$W/pkg/universal/mkinstaller.sh" -K "$W/k" -s "$W/k/userland/system.apfs" \
             -k starlte="$W/kernels/kernel-starlte" -k star2lte="$W/kernels/kernel-star2lte" -k crownlte="$W/kernels/kernel-crownlte" \
-            -r "$W/k/userland/root.apfs" -p "$PARTITION" -U -u starlte=13917184 -a "starlte=shub=6 bt=7 $BOOT_ARGS" -o "$W/out/$ZIPNAME"
+            -r "$W/k/userland/root.apfs" -p "$PARTITION" -U -u starlte=13917184 -a "starlte=cpus=8 bootcpu=2 cpufreq_gov=1 cpufreq_gov_big_max=1261000 cpufreq_gov_lit_max=1248000 mali=9 mali_gov=1 tmu=3 tmu_stop=90 tmu_batt_stop=45 usb_gadget=5 max77705_usbsw=1 halt_off=1 wifi=1 cam=5 brightness_bridge=1 mfc=5 poster_retry=2 shub=6 bt=7$([ -n "$BOOT_ARGS" ] && echo " $BOOT_ARGS")" -o "$W/out/$ZIPNAME"
 
       - name: Encrypt it (the installer inside, untouched), and check the archive
         env:
