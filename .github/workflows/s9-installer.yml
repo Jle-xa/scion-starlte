@@ -54,11 +54,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
-      - name: hfsprogs is installed (the persist build formats USERDATA)
-        run: |
-          command -v mkfs.hfsplus || { echo "::error::no mkfs.hfsplus"; exit 1; }
-          mkfs.hfsplus -V | head -1
-
       - name: The passphrase is set
         env:
           PASS: ${{ secrets.INSTALLER_PASSPHRASE }}
@@ -80,6 +75,9 @@ jobs:
           curl -L --fail --retry 3 -s "$SEVENZIP_URL" | tar -xJ -C "$W/bin" 7zz
           ln -sf 7zz "$W/bin/7z"
           "$W/bin/7z" i | sed -n 2p
+          # the persist installer formats USERDATA with hfsprogs
+          command -v mkfs.hfsplus || { echo "::error::hfsprogs did not install mkfs.hfsplus"; exit 1; }
+          mkfs.hfsplus -V | head -1
 
       - name: Sources (the kernel repository, this device repository inside it, scion-installer)
         env:
